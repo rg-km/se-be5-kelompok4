@@ -129,6 +129,43 @@ function drawCell(ctx, x, y, color) {
     ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
 }
 
+function drawHead(ctx, snake) {
+    // LEFT: 0,
+    // RIGHT: 1,
+    // UP: 2,
+    // DOWN: 3,
+    var img = document.getElementById("head");
+    var headCanvas = document.createElement('canvas');
+    headCanvas.width = CELL_SIZE;
+    headCanvas.height = CELL_SIZE;
+    var headCtx = headCanvas.getContext('2d');
+    headCtx.save();
+    headCtx.translate(CELL_SIZE/2,CELL_SIZE/2);
+    // LEFT
+    if(snake.direction==0){
+        headCtx.rotate(Math.PI/2);
+    }
+    // RIGHT
+    else if(snake.direction==1){
+        headCtx.rotate(-Math.PI/2);
+    }
+    // UP
+    else if(snake.direction==2){
+        headCtx.rotate(-Math.PI);
+    }
+    
+    headCtx.translate(-CELL_SIZE/2,-CELL_SIZE/2);
+    headCtx.drawImage(img, 0,0, CELL_SIZE, CELL_SIZE);
+    headCtx.restore();
+
+    ctx.drawImage(headCanvas, snake.head.x * CELL_SIZE, snake.head.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+}
+
+function drawBody(ctx, x, y) {
+    var img = document.getElementById("body");
+    ctx.drawImage(img, x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+}
+
 function drawScore(snake) {
     let scoreCanvas;
     if (snake.color == snake1.color) {
@@ -238,9 +275,9 @@ function draw() {
 
         ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
         drawObstacle(ctx);
-        drawCell(ctx, snake1.head.x, snake1.head.y, snake1.color);
+        drawHead(ctx, snake1);
         for (let i = 1; i < snake1.body.length; i++) {
-            drawCell(ctx, snake1.body[i].x, snake1.body[i].y, snake1.color);
+            drawBody(ctx, snake1.body[i].x, snake1.body[i].y);
         }
 
 
@@ -284,7 +321,7 @@ function eat(snake, apples) {
         if (snake.head.x == apple.position.x && snake.head.y == apple.position.y) {
             afterEat(snake)
             apple.position = initPosition();
-            
+
         }
         if (checkObjObstacleCol(apple)) {
             do {
