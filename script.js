@@ -74,6 +74,10 @@ function changeLevelDisplay() {
     document.getElementById('curr-speed').innerHTML = moveInterval
 }
 
+function changeScoreDisplay(snake) {
+    document.getElementById('score').innerHTML = snake.score
+}
+
 function initPosition() {
     return {
         x: Math.floor(Math.random() * WIDTH),
@@ -164,19 +168,6 @@ function drawHead(ctx, snake) {
 function drawBody(ctx, x, y) {
     var img = document.getElementById("body");
     ctx.drawImage(img, x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-}
-
-function drawScore(snake) {
-    let scoreCanvas;
-    if (snake.color == snake1.color) {
-        scoreCanvas = document.getElementById("score1Board");
-    }
-    let scoreCtx = scoreCanvas.getContext("2d");
-
-    scoreCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-    scoreCtx.font = "30px Arial";
-    scoreCtx.fillStyle = snake.color
-    scoreCtx.fillText(snake.score, 10, scoreCanvas.scrollHeight / 2);
 }
 
 function drawObstacle(ctx) {
@@ -296,7 +287,6 @@ function draw() {
             let hearthImg = document.getElementById("lives");
             ctx.drawImage(hearthImg, hearth.position.x * CELL_SIZE, hearth.position.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
         }
-        drawScore(snake1);
     }, REDRAW_INTERVAL);
 }
 
@@ -339,6 +329,8 @@ function eat(snake, apples) {
 
 function afterEat(snake) {
     snake.score++;
+    changeScoreDisplay(snake)
+
     snake.body.push({
         x: snake.head.x,
         y: snake.head.y
@@ -480,4 +472,5 @@ function initGame() {
     moveInterval = 120;
     currLevel = 1;
     changeLevelDisplay();
+    changeScoreDisplay(snake1)
 }
