@@ -1,6 +1,10 @@
 // Some Problems on Level Design Requirement :
 // 1. Apabila pindah level dan posisi obstacle tepat di kepala/badan, apakah mengurangi nyawa atau direset saja?
 
+// Some Problems on lives system :
+// 1. Kadang spawn deket tembok sehingga habis spawn langsung mati
+
+
 const CELL_SIZE = 20;
 const CANVAS_SIZE = 600;
 const REDRAW_INTERVAL = 50;
@@ -14,6 +18,7 @@ const DIRECTION = {
 }
 
 var moveInterval = 120;
+var moveTimeout;
 
 // Indikator untuk menunjukkan sekarang level berapa
 var currLevel = 1;
@@ -98,6 +103,7 @@ function initSnake(color) {
         ...initHeadAndBody(),
         direction: initDirection(),
         score: 0,
+        lives: 3
     }
 }
 let snake1 = initSnake("purple");
@@ -111,6 +117,12 @@ let apples = [{
         position: initPosition(),
     }
 ]
+
+let hearth = {
+    position: initPosition(),
+    isShowed: false,
+    canBeEaten: false
+}
 
 function drawCell(ctx, x, y, color) {
     ctx.fillStyle = color;
@@ -145,7 +157,6 @@ function drawObstacle(ctx) {
 }
 
 function checkSnakeObstacleCol(snake) {
-    let isCollide = false;
     let levelDes = levelDesign[currLevel - 1];
     for (let i = 0; i < levelDes.length; i++) {
         for (let j = 0; j < levelDes[i].length - 2; j += 2) {
@@ -153,22 +164,14 @@ function checkSnakeObstacleCol(snake) {
                 snake.head.x * CELL_SIZE + CELL_SIZE / 2 <= levelDes[i][j + 2] &&
                 snake.head.y * CELL_SIZE + CELL_SIZE / 2 >= levelDes[i][j + 1] &&
                 snake.head.y * CELL_SIZE + CELL_SIZE / 2 <= levelDes[i][j + 3]) {
-                console.log("Snake head x = " + snake.head.x)
-                console.log("Snake head y = " + snake.head.y)
-                // snake.body = [{
-                //     x: snake.head.x,
-                //     y: snake.head.y
-                // }]
-                gameOver();
-                isCollide = true;
+                reduseSnakeHealth(snake)
             }
         }
     }
-    return isCollide;
 }
 
-// Kadang apel akan spawn di obstacle, maka dibuat function ini untuk mengecek lokasi apel apakah bertabrakan
-function checkAppleObstacleCol(apple) {
+// Kadang apel dan nyawa akan spawn di obstacle, maka dibuat function ini untuk mengecek lokasi apel dan nyawa apakah bertabrakan
+function checkObjObstacleCol(apple) {
     let levelDes = levelDesign[currLevel - 1];
     for (let i = 0; i < levelDes.length; i++) {
         for (let j = 0; j < levelDes[i].length - 2; j += 2) {
@@ -181,6 +184,50 @@ function checkAppleObstacleCol(apple) {
         }
     }
     return false
+}
+
+function isPrime(number) {
+    let isPrime = true;
+
+    // check if number is equal to 1
+    if (number === 1) {
+        isPrime = false;
+    }
+
+    // check if number is greater than 1
+    else if (number > 1) {
+        // looping through 2 to number-1
+        for (let i = 2; i < number; i++) {
+            if (number % i == 0) {
+                isPrime = false;
+                break;
+            }
+        }
+    }
+
+    // check if number is less than 1
+    else {
+        isPrime = false;
+    }
+
+    return isPrime;
+}
+
+function hearthBlinking(snake) {
+
+    // Di doc ditulis bilangan prima tapi di video pas bilangan primanya mulai dari 7
+    if (snake.score > 7 && isPrime(snake.score - 1)) {
+        if (checkObjObstacleCol(hearth)) {
+            do {
+                hearth.position = initPosition();
+            } while (checkObjObstacleCol(hearth))
+        }
+
+        hearth.isShowed = !hearth.isShowed
+        hearth.canBeEaten = true
+    } else {
+        hearth.isShowed = false
+    }
 }
 
 function draw() {
@@ -204,6 +251,14 @@ function draw() {
             ctx.drawImage(img, apple.position.x * CELL_SIZE, apple.position.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
         }
 
+        for (let i = 0; i < snake1.lives; i++) {
+            var img = document.getElementById("lives");
+            ctx.drawImage(img, i * CELL_SIZE, 0, CELL_SIZE, CELL_SIZE);
+        }
+        if (hearth.isShowed) {
+            let hearthImg = document.getElementById("lives");
+            ctx.drawImage(hearthImg, hearth.position.x * CELL_SIZE, hearth.position.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        }
         drawScore(snake1);
     }, REDRAW_INTERVAL);
 }
@@ -227,30 +282,37 @@ function eat(snake, apples) {
     for (let i = 0; i < apples.length; i++) {
         let apple = apples[i];
         if (snake.head.x == apple.position.x && snake.head.y == apple.position.y) {
-            snake.score++;
-            snake.body.push({
-                x: snake.head.x,
-                y: snake.head.y
-            });
-            if (snake.score % 5 == 0 && currLevel < 5) {
-                var audio = new Audio('assets/sound/level-up.mp3');
-                audio.play();
-                alert(`Level ${currLevel} complete`);
-                currLevel++;
-                moveInterval -= 20;
-                changeLevelDisplay();
-                apples.forEach((e)=>{
-                    if(checkAppleObstacleCol(e)){
-                        do {
-                            e.position = initPosition();
-                        } while (checkAppleObstacleCol(e))
-                    }
-                })
-            }
+            afterEat(snake)
+            apple.position = initPosition();
+            
+        }
+        if (checkObjObstacleCol(apple)) {
             do {
                 apple.position = initPosition();
-            } while (checkAppleObstacleCol(apple))
+            } while (checkObjObstacleCol(apple))
         }
+    }
+
+    if (snake.head.x == hearth.position.x && snake.head.y == hearth.position.y && hearth.canBeEaten) {
+        afterEat(snake);
+        snake.lives++;
+        hearth.canBeEaten = false;
+    }
+}
+
+function afterEat(snake) {
+    snake.score++;
+    snake.body.push({
+        x: snake.head.x,
+        y: snake.head.y
+    });
+    if (snake.score % 5 == 0 && currLevel < 5) {
+        var audio = new Audio('assets/sound/level-up.mp3');
+        audio.play();
+        alert(`Level ${currLevel} complete`);
+        currLevel++;
+        moveInterval -= 20;
+        changeLevelDisplay();
     }
 }
 
@@ -280,17 +342,11 @@ function moveUp(snake) {
 
 function checkCollision(snakes) {
     let isCollide = false;
-    for (let i = 0; i < snakes.length; i++) {
-        for (let j = 0; j < snakes.length; j++) {
-            for (let k = 1; k < snakes[j].body.length; k++) {
-                if (snakes[i].head.x == snakes[j].body[k].x && snakes[i].head.y == snakes[j].body[k].y) {
-                    isCollide = true;
-                }
-            }
+
+    for (let k = 1; k < snakes.body.length; k++) {
+        if (snakes.head.x == snakes.body[k].x && snakes.head.y == snakes.body[k].y) {
+            isCollide = true;
         }
-    }
-    if (isCollide) {
-        gameOver();
     }
     return isCollide;
 }
@@ -301,12 +357,10 @@ function gameOver() {
 
     alert("Game over");
     snake1 = initSnake("purple");
-    changeLevelDisplay();
+    initGame();
 }
 
 function move(snake) {
-    console.log("Snake head x = " + snake.head.x)
-    console.log("Snake head y = " + snake.head.y)
     switch (snake.direction) {
         case DIRECTION.LEFT:
             moveLeft(snake);
@@ -322,20 +376,15 @@ function move(snake) {
             break;
     }
     moveBody(snake);
-
-    if (!checkCollision([snake1])) {
-        setTimeout(function () {
+    hearthBlinking(snake);
+    if (!checkCollision(snake)) {
+        moveTimeout = setTimeout(function () {
             move(snake);
         }, moveInterval);
     } else {
-        initGame();
+        reduseSnakeHealth(snake)
     }
-
-    if (!checkSnakeObstacleCol(snake1)) {
-
-    } else {
-        initGame();
-    }
+    checkSnakeObstacleCol(snake)
 }
 
 function moveBody(snake) {
@@ -371,6 +420,23 @@ document.addEventListener("keydown", function (event) {
     }
 
 })
+
+function reduseSnakeHealth(snake) {
+    clearTimeout(moveTimeout)
+    let head = initPosition();
+    snake.head = head;
+    let body = [{
+        x: head.x,
+        y: head.y
+    }];
+    snake.body = body;
+    snake.lives--;
+    if (snake.lives < 1) {
+        gameOver();
+    } else {
+        move(snake);
+    }
+}
 
 function initGame() {
     move(snake1);
